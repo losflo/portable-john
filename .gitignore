@@ -1,0 +1,10 @@
+*
+!/**/
+!*.*
+!makefile
+
+.DS_STORE
+*.csv
+*.xls
+*.txt
+*.pdf
