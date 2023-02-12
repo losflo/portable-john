@@ -7,7 +7,7 @@ import (
 
 func FormatString(s string) string {
 	rgx2 := regexp.MustCompile(`\s+`)
-	s = rgx2.ReplaceAllString(s, "")
+	s = rgx2.ReplaceAllString(s, " ")
 	s = strings.TrimSpace(strings.ToUpper(s))
 	return s
 } // ./FormatString
