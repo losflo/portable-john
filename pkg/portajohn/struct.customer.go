@@ -1,12 +1,15 @@
 package portajohn
 
 import (
+	"fmt"
+	"math/rand"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Customer struct {
+	ID                      primitive.ObjectID `json:"_id" bson:"_id"`
 	UID                     string             `json:"userRandomId" bson:"userRandomId"`
 	Email                   string             `json:"email" bson:"email"`
 	PhoneNumber             string             `json:"phoneNumber" bson:"phoneNumber"`
@@ -23,17 +26,37 @@ type Customer struct {
 	Deleted                 bool               `json:"isDeleted" bson:"isDeleted"`
 	Blocked                 bool               `json:"isBlocked" bson:"isBlocked"`
 	BanEndTime              int                `json:"banEndTime" bson:"banEndTime"`
-	Location                Location           `json:"location" bson:"location"`
+	Location                *Location          `json:"location,omitempty" bson:"location,omitempty"`
 	LicenseNumber           string             `json:"licenseNumber" bson:"licenseNumber"`
 	SecondaryEmail          string             `json:"secondaryEmail" bson:"secondaryEmail"`
 	TaxExempt               bool               `json:"isTaxExempted" bson:"isTaxExempted"`
 	BusyInCall              bool               `json:"isBusyInCall" bson:"isBusyInCall"`
 	BillingInfo             BillingInfo        `json:"billingInfo" bson:"billingInfo"`
-	AccountPayable          AccountPayable     `json:"accountPayable" bson:"accountPayable"`
+	AccountPayable          *AccountPayable    `json:"accountPayable,omitempty" bson:"accountPayable,omitempty"`
 	CreatedBy               primitive.ObjectID `json:"createdBy" bson:"createdBy"`
 	CreatedAt               time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt               time.Time          `json:"updatedAt" bson:"updatedAt"`
+
+	// added fields
+	Zip4        string `json:"zip4" bson:"zip4"`
+	TacMaster   string `json:"tacMaster" bson:"tacMaster"`
+	TacMasterId int64  `json:"tacMasterId" bson:"tacMasterId"`
 }
+
+func NewUID() string {
+	a := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	s := ""
+	amin := 1
+	amax := 26
+	rand.Seed(time.Now().UnixNano())
+	for range [3]struct{}{} {
+		rint := rand.Intn(amax-amin) + amin
+		s += string(a[rint])
+		rint = rand.Intn(9)
+		s += fmt.Sprintf("%d", rint)
+	}
+	return s
+} // ./NewUID
 
 type Location struct {
 	Type   string `json:"type" bson:"type"`
@@ -42,8 +65,10 @@ type Location struct {
 
 type BillingInfo struct {
 	Address  string   `json:"address" bson:"adress"`
+	Address2 string   `json:"address2" bson:"address2"`
 	City     string   `json:"city" bson:"city"`
 	Zip      string   `json:"zipCode" bson:"zipCode"`
+	Zip4     string   `json:"zip4" bson:"zip4"`
 	Location Location `json:"location" bson:"location"`
 }
 
