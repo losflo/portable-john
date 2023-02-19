@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"time"
 
-	// _ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/denisenkom/go-mssqldb"
+	// _ "github.com/go-sql-driver/mysql"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -100,7 +101,7 @@ func main() {
 
 func importCustomerSites() error {
 	query := `
-		SELECT TOP(1)
+		SELECT TOP(1000)
 			c1.cocode,
 			c1.custmast,
 			c1.custnum,
@@ -151,11 +152,9 @@ func importCustomerSites() error {
 
 			c1.FKjcustmast
 
-		FROM jcusf01 as c1
-
-		INNER JOIN jcusf07 as c7 ON c1.FKjcustmast = c7.FKjcustmast 
-
-		INNER JOIN jcusf09 as c9 ON c1.custnum = c9.custnum
+		FROM PortableJohnData.dbo.jcusf01 as c1
+		INNER JOIN PortableJohnData.dbo.jcusf07 as c7 ON c1.FKjcustmast = c7.FKjcustmast 
+		INNER JOIN PortableJohnData.dbo.jcusf09 as c9 ON c1.custnum = c9.custnum
 	`
 
 	stmt, err := db.Prepare(query)
@@ -191,7 +190,9 @@ func importCustomerSites() error {
 // cleans description, inserts to mongo with unique id
 func importInventory() error {
 	query := `
-		SELECT DISTINCT descrip FROM jivtf01
+		SELECT DISTINCT descrip 
+		FROM PortableJohnData.dbo.jivtf01
+		WHERE descrip <> ''
 	`
 	col := mdb.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -203,6 +204,7 @@ func importInventory() error {
 	for rows.Next() {
 		p := portajohn.Product{
 			ID:        primitive.NewObjectID(),
+			PID:       fmt.Sprintf("S%s", portajohn.NewUID()),
 			Status:    1,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
@@ -211,10 +213,10 @@ func importInventory() error {
 		if err != nil {
 			return err
 		}
+		p.Title = portajohn.FormatString(p.Title)
 		if p.Title == "" {
 			continue
 		}
-		p.Title = portajohn.FormatString(p.Title)
 		_, err = col.InsertOne(ctx, p)
 		if err != nil {
 			return err
@@ -228,8 +230,8 @@ func importInventory() error {
 func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID) error {
 	col := mdb.Collection("productlocations")
 	query := `
-		SELECT * FROM jivtf01 AS inv
-		where custnum = @p1
+		SELECT * FROM PortableJohnData.dbo.jivtf01 AS inv
+		where custnum = @p1 AND descrip <> ''
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -247,6 +249,9 @@ func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID)
 		if err != nil {
 			return err
 		}
+		if p == nil {
+			continue
+		}
 		pl := portajohn.ProductLocation{
 			ID:           primitive.NewObjectID(),
 			ProductTitle: inv.Descrip,
@@ -256,6 +261,10 @@ func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID)
 
 			CreatedAt: inv.Inputdate,
 			UpdatedAt: inv.Inputdate,
+		}
+		err = markAccountActive(customerId)
+		if err != nil {
+			return err
 		}
 		ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
 		_, err = col.InsertOne(ctx2, pl)
@@ -268,6 +277,20 @@ func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID)
 	return nil
 } // ./importCustomerInventory
 
+func markAccountActive(custID primitive.ObjectID) error {
+	col := mdb.Collection("useraccounts")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	filter := bson.M{"_id": custID}
+	update := bson.M{
+		"$set": bson.M{
+			"status": 1,
+		},
+	}
+	_, err := col.UpdateOne(ctx, filter, update)
+	return err
+} // ./markAccountActive
+
 // get product by title
 func productByTitle(title string) (*portajohn.Product, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -279,6 +302,10 @@ func productByTitle(title string) (*portajohn.Product, error) {
 	var p portajohn.Product
 	sr := col.FindOne(ctx, filter)
 	if err := sr.Decode(&p); err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("product '%s' not found", title)
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &p, nil

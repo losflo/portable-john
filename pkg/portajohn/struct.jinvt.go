@@ -111,7 +111,7 @@ func (j *Jinvt) Format() {
 	j.Longitude = FormatString(j.Longitude)
 } // ./Format
 
-func (j Jinvt) Scan(i interface{}) error {
+func (j *Jinvt) Scan(i interface{}) error {
 	switch v := i.(type) {
 	case *sql.Row:
 		err := v.Scan(

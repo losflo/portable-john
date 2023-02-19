@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -95,6 +96,11 @@ func (cs *CustomerSite) Format() {
 	cs.Bllcity = FormatString(cs.Bllcity)
 	cs.Bllstate = FormatString(cs.Bllstate)
 	cs.Bllzip = FormatString(cs.Bllzip)
+	cs.Bllemail1.String = strings.ToLower(FormatString(cs.Bllemail1.String))
+	cs.Bllemail2.String = strings.ToLower(FormatString(cs.Bllemail2.String))
+
+	cs.Email.String = strings.ToLower(FormatString(cs.Email.String))
+	cs.Email2.String = strings.ToLower(FormatString(cs.Email2.String))
 
 	// regex match for zip and zip4
 	match = ziprgx.FindStringSubmatch(cs.Bllzip)
@@ -224,19 +230,36 @@ func (cs *CustomerSite) Scan(i interface{}) error {
 } // ./Scan
 
 func (cs CustomerSite) Customer() Customer {
+	email := ""
+	if cs.Bllemail1.Valid {
+		email = cs.Bllemail1.String
+	}
+	if email == "" && cs.Bllemail2.Valid {
+		email = cs.Bllemail2.String
+	}
+	if email == "" && cs.Email.Valid {
+		email = cs.Email.String
+	}
+	if email == "" && cs.Email2.Valid {
+		email = cs.Email2.String
+	}
+	uid := fmt.Sprintf("C%s", NewUID())
+	if email == "" {
+		email = fmt.Sprintf("%s-%d@portablejohn.com", cs.Custmast, cs.Custnum)
+	}
 	return Customer{
 		ID:             primitive.NewObjectID(),
-		UID:            NewUID(),
+		UID:            uid,
 		TacMaster:      cs.Custmast,
 		TacMasterId:    int64(cs.Custnum),
-		AccountType:    0,
+		AccountType:    3,
 		Status:         1,
-		Email:          cs.Bllemail1.String,
+		Email:          email,
 		PhoneNumber:    cs.Bllphone,
 		Name:           cs.Bllname,
 		Zip:            cs.Bllzip,
 		Zip4:           cs.Bllzip4,
-		SecondaryEmail: cs.Bllemail1.String,
+		SecondaryEmail: cs.Email.String,
 		BillingInfo: BillingInfo{
 			Address:  cs.Blladdr,
 			Address2: cs.Blladdr2,
