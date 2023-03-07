@@ -25,15 +25,17 @@ type Customer struct {
 	RefreshAccessToken      string             `json:"refreshAccessToken" bson:"refreshAccessToken"`
 	Deleted                 bool               `json:"isDeleted" bson:"isDeleted"`
 	Blocked                 bool               `json:"isBlocked" bson:"isBlocked"`
+	InvalidLoginAttempTimes []interface{}      `json:"invalidLoginAttempTimes" bson:"invalidLoginAttempTimes"`
 	BanEndTime              int                `json:"banEndTime" bson:"banEndTime"`
-	Location                *Location          `json:"location,omitempty" bson:"location,omitempty"`
+	Location                Location           `json:"location,omitempty" bson:"location,omitempty"`
 	LicenseNumber           string             `json:"licenseNumber" bson:"licenseNumber"`
 	SecondaryEmail          string             `json:"secondaryEmail" bson:"secondaryEmail"`
 	TaxExempt               bool               `json:"isTaxExempted" bson:"isTaxExempted"`
 	BusyInCall              bool               `json:"isBusyInCall" bson:"isBusyInCall"`
 	BillingInfo             BillingInfo        `json:"billingInfo" bson:"billingInfo"`
-	AccountPayable          *AccountPayable    `json:"accountPayable,omitempty" bson:"accountPayable,omitempty"`
+	AccountPayable          AccountPayable     `json:"accountPayable" bson:"accountPayable"`
 	CreatedBy               primitive.ObjectID `json:"createdBy" bson:"createdBy"`
+	Sessions                []interface{}      `json:"sessions" bson:"sessions"`
 	CreatedAt               time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt               time.Time          `json:"updatedAt" bson:"updatedAt"`
 
@@ -59,12 +61,12 @@ func NewUID() string {
 } // ./NewUID
 
 type Location struct {
-	Type   string `json:"type" bson:"type"`
-	Coords []int  `json:"coordinates" bson:"coordinates"`
+	Type   string    `json:"type" bson:"type"`
+	Coords []float32 `json:"coordinates" bson:"coordinates"`
 }
 
 type BillingInfo struct {
-	Address  string   `json:"address" bson:"adress"`
+	Address  string   `json:"address" bson:"address"`
 	Address2 string   `json:"address2" bson:"address2"`
 	City     string   `json:"city" bson:"city"`
 	Zip      string   `json:"zipCode" bson:"zipCode"`
