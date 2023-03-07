@@ -101,7 +101,7 @@ func main() {
 
 func importCustomerSites() error {
 	query := `
-		SELECT TOP(1000)
+		SELECT TOP(10)
 			c1.cocode,
 			c1.custmast,
 			c1.custnum,
@@ -203,9 +203,12 @@ func importInventory() error {
 	}
 	for rows.Next() {
 		p := portajohn.Product{
-			ID:        primitive.NewObjectID(),
-			PID:       fmt.Sprintf("S%s", portajohn.NewUID()),
-			Status:    1,
+			ID:     primitive.NewObjectID(),
+			PID:    fmt.Sprintf("S%s", portajohn.NewUID()),
+			Status: 1,
+			Images: []string{
+				"https://teal-staging.s3.amazonaws.com/files/1000X1000/products/6471678150486.jpg",
+			},
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
