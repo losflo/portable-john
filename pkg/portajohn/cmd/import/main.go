@@ -209,8 +209,9 @@ func importInventory() error {
 			Images: []string{
 				"https://teal-staging.s3.amazonaws.com/files/1000X1000/products/6471678150486.jpg",
 			},
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			LocationToken: "S5iG65mwWJgSLD0Bt6TXJgSELP5qzx56",
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
 		}
 		err := rows.Scan(&p.Title)
 		if err != nil {
