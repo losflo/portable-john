@@ -10,6 +10,11 @@ type Product struct {
 	ID              primitive.ObjectID  `json:"_id" bson:"_id"`
 	Title           string              `json:"title" bson:"title"`
 	PID             string              `json:"productRandomId" bson:"productRandomId"`
+	Images          []string            `json:"images" bson:"images"`
+	Specs           Specs               `json:"specs" bson:"specs"`
+	Features        Features            `json:"features" bson:"features"`
+	Requirements    Requirements        `json:"requirements" bson:"requirements"`
+	Pricing         Pricing             `json:"pricing" bson:"pricing"`
 	Description     string              `json:"description" bson:"description"`
 	QuantityInStock int64               `json:"quantityInStock" bson:"quantityInStock"`
 	IsDeleted       bool                `json:"isDeleted" bson:"isDeleted"`
@@ -18,6 +23,36 @@ type Product struct {
 	LocationToken   string              `json:"locationToken" bson:"locationToken"`
 	CreatedAt       time.Time           `json:"createdAt" bson:"createdAt"`
 	UpdatedAt       time.Time           `json:"updatedAt" bson:"updatedAt"`
+}
+
+type Specs struct {
+	Height        int32 `json:"height" bson:"height"`
+	Length        int32 `json:"length" bson:"length"`
+	Width         int32 `json:"width" bson:"width"`
+	HoseLenth     int32 `json:"hoseLength" bson:"hoseLength"`
+	WasteCapacity int32 `json:"wasteCapacity" bson:"wasteCapacity"`
+	WaterCapacity int32 `json:"waterCapacity" bson:"waterCapacity"`
+}
+
+type Features struct {
+	Towel            bool  `json:"towel" bson:"towel"`
+	SecurityLock     bool  `json:"securityLock" bson:"securityLock"`
+	ElectricSystem   bool  `json:"electricSystem" bson:"electricSystem"`
+	ToiletPaperRolls int32 `json:"toiletPaperRolls" bson:"toiletPaperRolls"`
+	HandSanitizers   int32 `json:"handSanitizers" bson:"handSanitizers"`
+}
+
+type Requirements struct {
+	ServiceIntervalInDays int32 `json:"serviceIntervalInDays" bson:"serviceIntervalInDays"`
+	Blu                   int32 `json:"blu" bson:"blu"`
+	Chemical              int32 `json:"chemical" bson:"chemical"`
+	Gloves                bool  `json:"gloves" bson:"gloves"`
+}
+
+type Pricing struct {
+	Price              int32 `json:"price" bson:"price"`
+	DiscountPercentage int32 `json:"discountPercentage" bson:"discountPercentage"`
+	DiscountedPrice    int32 `json:"discountedPrice" bson:"discountedPrice"`
 }
 
 type ProductLocation struct {
