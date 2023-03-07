@@ -247,6 +247,8 @@ func (cs CustomerSite) Customer() Customer {
 	if email == "" {
 		email = fmt.Sprintf("%s-%d@portablejohn.com", cs.Custmast, cs.Custnum)
 	}
+
+	cid, _ := primitive.ObjectIDFromHex("63ec6d91782a414a41dffb11")
 	return Customer{
 		ID:             primitive.NewObjectID(),
 		UID:            uid,
@@ -266,12 +268,26 @@ func (cs CustomerSite) Customer() Customer {
 			City:     cs.Bllcity,
 			Zip:      cs.Bllzip,
 			Zip4:     cs.Bllzip4,
+			Location: Location{
+				Type:   "Point",
+				Coords: []float32{0, 0},
+			},
+		},
+		Location: Location{
+			Type:   "Point",
+			Coords: []float32{0, 0},
 		},
 		CreatedAt: cs.Startdate,
+		CreatedBy: cid,
 	}
 } // ./Customer
 
 func (cs CustomerSite) Site() Site {
+	cid, _ := primitive.ObjectIDFromHex("63ec6d91782a414a41dffb11")
+	zip := cs.Sitezip
+	if cs.Sitezip4 != "" {
+		zip += "-" + cs.Sitezip4
+	}
 	return Site{
 		ID:          primitive.NewObjectID(),
 		AccountID:   primitive.NewObjectID(),
@@ -282,11 +298,16 @@ func (cs CustomerSite) Site() Site {
 		Address2:    cs.Siteaddr2,
 		City:        cs.Sitecity,
 		State:       cs.Sitestate,
-		Zip:         cs.Sitezip,
-		Zip4:        cs.Sitezip4,
+		Zip:         zip,
 		TacMaster:   cs.Custmast,
 		TacMasterId: int64(cs.Custnum),
+		ContactName: cs.Super,
+		Location: Location{
+			Type:   "Point",
+			Coords: []float32{0, 0},
+		},
 
 		CreatedAt: cs.Startdate,
+		CreatedBy: cid,
 	}
 } // ./Site
