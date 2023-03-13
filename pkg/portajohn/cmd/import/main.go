@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
 	"fmt"
 	"log"
@@ -101,7 +102,7 @@ func main() {
 
 func importCustomerSites() error {
 	query := `
-		SELECT TOP(10)
+		SELECT TOP(1000)
 			c1.cocode,
 			c1.custmast,
 			c1.custnum,
@@ -202,6 +203,10 @@ func importInventory() error {
 		return err
 	}
 	for rows.Next() {
+		obId, err := primitive.ObjectIDFromHex("63756a27d851f89b88b4700e")
+		if err != nil {
+			return err
+		}
 		p := portajohn.Product{
 			ID:     primitive.NewObjectID(),
 			PID:    fmt.Sprintf("S%s", portajohn.NewUID()),
@@ -212,8 +217,9 @@ func importInventory() error {
 			LocationToken: "S5iG65mwWJgSLD0Bt6TXJgSELP5qzx56",
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
+			CategoryID:    &obId,
 		}
-		err := rows.Scan(&p.Title)
+		err = rows.Scan(&p.Title)
 		if err != nil {
 			return err
 		}
@@ -231,15 +237,16 @@ func importInventory() error {
 
 // importCustomerInventory queries for customer inventory info
 // takes custnum, joins customer table with inventory table on custnum
-func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID) error {
-	col := mdb.Collection("productlocations")
+func importCustomerInventory(cust portajohn.Customer, site portajohn.Site) error {
+	col := mdb.Collection("quotes")
 	query := `
 		SELECT * FROM PortableJohnData.dbo.jivtf01 AS inv
 		where custnum = @p1 AND descrip <> ''
 	`
+	fmt.Println(cust.TacMasterId)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	rows, err := db.QueryContext(ctx, query, custnum)
+	rows, err := db.QueryContext(ctx, query, cust.TacMasterId)
 	if err != nil {
 		return err
 	}
@@ -256,26 +263,104 @@ func importCustomerInventory(custnum int, customerId, siteId primitive.ObjectID)
 		if p == nil {
 			continue
 		}
-		pl := portajohn.ProductLocation{
-			ID:           primitive.NewObjectID(),
-			ProductTitle: inv.Descrip,
-			ProductID:    p.ID,
-			CustomerID:   &customerId,
-			SiteID:       &siteId,
-
-			CreatedAt: inv.Inputdate,
-			UpdatedAt: inv.Inputdate,
+		// increment product quantity
+		filter := bson.M{"productRandomID": p.PID}
+		update := bson.M{"$set": bson.M{"quantityInStock": p.QuantityInStock + 1}}
+		colProduct := mdb.Collection("products")
+		_, err = colProduct.UpdateOne(ctx, filter, update)
+		if err != nil {
+			return err
 		}
-		err = markAccountActive(customerId)
+		// create product
+		cid, _ := primitive.ObjectIDFromHex("63ec6d91782a414a41dffb11")
+		o := portajohn.Order{
+			ID:                 primitive.NewObjectID(),
+			QID:                fmt.Sprintf("Q%s", portajohn.NewUID()),
+			OID:                fmt.Sprintf("O%s", portajohn.NewUID()),
+			StopID:             fmt.Sprintf("S%s", portajohn.NewUID()),
+			ZipCode:            site.Zip,
+			RentalDurationType: 1,
+			ServiceInterval:    1,
+			DeliveryType:       1,
+			DeliveryDate: portajohn.Date{
+				Year:  2023,
+				Month: 1,
+				Day:   1,
+			},
+			PickupDate: portajohn.Date{
+				Year:  2023,
+				Month: 1,
+				Day:   1,
+			},
+			SpecialNeeds: "",
+			SiteDetails: portajohn.SiteDetails{
+				Title:       site.Title,
+				ContactName: site.ContactName,
+				Email:       site.Email,
+				PhoneNumber: site.PhoneNumber,
+				Address:     site.Address,
+				City:        site.City,
+				ZipCode:     site.Zip,
+				Location: portajohn.Location{
+					Type:   "Point",
+					Coords: []float32{0, 0},
+				},
+			},
+			IsSameBillingInfo: true,
+			BillingInfo:       cust.BillingInfo,
+			AccountPayable:    cust.AccountPayable,
+			Services:          []interface{}{},
+			Pricing: portajohn.Pricing{
+				SubTotal:           0,
+				DeliveryFee:        0,
+				ServiceCharges:     0,
+				TaxPercentage:      0,
+				TaxAmount:          0,
+				DiscountPercentage: 0,
+				DiscountAmount:     0,
+				Total:              100,
+			},
+			Products: []portajohn.QuoteProduct{{
+				ID:                   p.ID,
+				PID:                  p.PID,
+				Title:                p.Title,
+				Image:                p.Images[0],
+				Quantity:             1,
+				CategoryName:         "SC Const",
+				PerItemActualCost:    100,
+				PerItemOfferedAmount: 100,
+			}},
+			Status:               4,
+			OrderStatus:          4,
+			StepNumber:           5,
+			SentTime:             int(time.Now().Unix()),
+			ExpectedExpiryTime:   int(time.Now().Add(24 * 30 * time.Hour).Unix()),
+			CustomerResponseTime: 0,
+			Token:                fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s%d", p.PID, time.Now().UnixNano())))),
+			UnderTheBookRequestInfo: portajohn.UnderTheBookRequestInfo{
+				SentTime: 0,
+			},
+			CustomerId:          cust.ID,
+			CreatedBy:           cid,
+			SentBy:              cid,
+			SiteId:              site.ID,
+			IsOrderDeleted:      false,
+			CustomerResponses:   []interface{}{},
+			UnassignedInRouting: []interface{}{},
+			CreatedAt:           time.Now(),
+			UpdatedAt:           time.Now(),
+		}
+		err = markAccountActive(cust.ID)
 		if err != nil {
 			return err
 		}
 		ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
-		_, err = col.InsertOne(ctx2, pl)
+		_, err = col.InsertOne(ctx2, o)
 		if err != nil {
 			cancel2()
 			return err
 		}
+		fmt.Println("created order ", o.OID)
 		cancel2()
 	}
 	return nil
@@ -365,7 +450,7 @@ func insertCustomerSiteInfo(cs portajohn.CustomerSite) error {
 		if err != nil {
 			return err
 		}
-		err = importCustomerInventory(cs.Custnum, cFound.ID, s.ID)
+		err = importCustomerInventory(c, s)
 		return err
 	}
 
@@ -383,6 +468,6 @@ func insertCustomerSiteInfo(cs portajohn.CustomerSite) error {
 	}
 
 	// check inventory
-	err = importCustomerInventory(cs.Custnum, c.ID, s.ID)
+	err = importCustomerInventory(c, s)
 	return err
 } // ./insertCustomerSiteInfo
