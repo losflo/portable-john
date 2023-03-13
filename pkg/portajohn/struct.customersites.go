@@ -273,6 +273,11 @@ func (cs CustomerSite) Customer() Customer {
 				Coords: []float32{0, 0},
 			},
 		},
+		AccountPayable: AccountPayable{
+			Name:        cs.Super,
+			Email:       email,
+			PhoneNumber: cs.Bllphone,
+		},
 		Location: Location{
 			Type:   "Point",
 			Coords: []float32{0, 0},
