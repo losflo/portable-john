@@ -51,7 +51,14 @@ type Requirements struct {
 
 type Pricing struct {
 	Price              int32 `json:"price" bson:"price"`
+	SubTotal           int32 `json:"subTotal" bson:"subTotal"`
+	DeliveryFee        int32 `json:"deliveryFee" bson:"deliveryFee"`
+	ServiceCharges     int32 `json:"serviceCharges" bson:"serviceCharges"`
+	TaxPercentage      int32 `json:"taxPercentage" bson:"taxPercentage"`
+	TaxAmount          int32 `json:"taxAmount" bson:"taxAmount"`
+	Total              int32 `json:"total" bson:"total"`
 	DiscountPercentage int32 `json:"discountPercentage" bson:"discountPercentage"`
+	DiscountAmount     int32 `json:"discountAmount" bson:"discountAmount"`
 	DiscountedPrice    int32 `json:"discountedPrice" bson:"discountedPrice"`
 }
 
