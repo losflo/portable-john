@@ -17,13 +17,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"portablejohn.com/pkg/heremaps"
 	"portablejohn.com/pkg/portajohn"
 )
 
 var db *sql.DB
 var mdb *mongo.Database
+var hm *heremaps.Service
 
 func init() {
+	hm = heremaps.NewService(heremaps.Config{
+		Endpoint: os.Getenv("HERE_MAPS_ENDPOINT"),
+		ApiKey:   os.Getenv("HERE_MAPS_API_KEY"),
+	})
+
 	var err error
 	qry := url.Values{}
 	qry.Add("database", "portablejohn")
@@ -243,7 +250,6 @@ func importCustomerInventory(cust portajohn.Customer, site portajohn.Site) error
 		SELECT * FROM PortableJohnData.dbo.jivtf01 AS inv
 		where custnum = @p1 AND descrip <> ''
 	`
-	fmt.Println(cust.TacMasterId)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	rows, err := db.QueryContext(ctx, query, cust.TacMasterId)
@@ -273,6 +279,10 @@ func importCustomerInventory(cust portajohn.Customer, site portajohn.Site) error
 		}
 		// create product
 		cid, _ := primitive.ObjectIDFromHex("63ec6d91782a414a41dffb11")
+		orderPlace, err := hm.Geocode(fmt.Sprintf("%s %s, %s %s", site.Address, site.City, site.State, site.Zip))
+		if err != nil {
+			return err
+		}
 		o := portajohn.Order{
 			ID:                 primitive.NewObjectID(),
 			QID:                fmt.Sprintf("Q%s", portajohn.NewUID()),
@@ -303,7 +313,7 @@ func importCustomerInventory(cust portajohn.Customer, site portajohn.Site) error
 				ZipCode:     site.Zip,
 				Location: portajohn.Location{
 					Type:   "Point",
-					Coords: []float32{0, 0},
+					Coords: []float32{float32(orderPlace.Position.Lat), float32(orderPlace.Position.Lng)},
 				},
 			},
 			IsSameBillingInfo: true,

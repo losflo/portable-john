@@ -3,11 +3,14 @@ package portajohn
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"portablejohn.com/pkg/heremaps"
 )
 
 type CustomerSite struct {
@@ -230,6 +233,10 @@ func (cs *CustomerSite) Scan(i interface{}) error {
 } // ./Scan
 
 func (cs CustomerSite) Customer() Customer {
+	hm := heremaps.NewService(heremaps.Config{
+		Endpoint: os.Getenv("HERE_MAPS_ENDPOINT"),
+		ApiKey:   os.Getenv("HERE_MAPS_API_KEY"),
+	})
 	email := ""
 	if cs.Bllemail1.Valid {
 		email = cs.Bllemail1.String
@@ -246,6 +253,11 @@ func (cs CustomerSite) Customer() Customer {
 	uid := fmt.Sprintf("C%s", NewUID())
 	if email == "" {
 		email = fmt.Sprintf("%s-%d@portablejohn.com", cs.Custmast, cs.Custnum)
+	}
+
+	customerPlace, err := hm.Geocode(fmt.Sprintf("%s %s, %s %s", cs.Blladdr, cs.Bllcity, cs.Bllstate, cs.Bllzip))
+	if err != nil {
+		log.Println(err)
 	}
 
 	cid, _ := primitive.ObjectIDFromHex("63ec6d91782a414a41dffb11")
@@ -270,7 +282,7 @@ func (cs CustomerSite) Customer() Customer {
 			Zip4:     cs.Bllzip4,
 			Location: Location{
 				Type:   "Point",
-				Coords: []float32{0, 0},
+				Coords: []float32{float32(customerPlace.Position.Lat), float32(customerPlace.Position.Lng)},
 			},
 		},
 		AccountPayable: AccountPayable{
@@ -280,7 +292,7 @@ func (cs CustomerSite) Customer() Customer {
 		},
 		Location: Location{
 			Type:   "Point",
-			Coords: []float32{0, 0},
+			Coords: []float32{float32(customerPlace.Position.Lat), float32(customerPlace.Position.Lng)},
 		},
 		CreatedAt: cs.Startdate,
 		CreatedBy: cid,
@@ -293,6 +305,17 @@ func (cs CustomerSite) Site() Site {
 	if cs.Sitezip4 != "" {
 		zip += "-" + cs.Sitezip4
 	}
+
+	hm := heremaps.NewService(heremaps.Config{
+		Endpoint: os.Getenv("HERE_MAPS_ENDPOINT"),
+		ApiKey:   os.Getenv("HERE_MAPS_API_KEY"),
+	})
+
+	sitePlace, err := hm.Geocode(fmt.Sprintf("%s %s, %s %s", cs.Siteaddr, cs.Sitecity, cs.Sitestate, cs.Sitezip))
+	if err != nil {
+		log.Println(err)
+	}
+
 	return Site{
 		ID:          primitive.NewObjectID(),
 		AccountID:   primitive.NewObjectID(),
@@ -309,7 +332,7 @@ func (cs CustomerSite) Site() Site {
 		ContactName: cs.Super,
 		Location: Location{
 			Type:   "Point",
-			Coords: []float32{0, 0},
+			Coords: []float32{float32(sitePlace.Position.Lat), float32(sitePlace.Position.Lng)},
 		},
 
 		CreatedAt: cs.Startdate,
